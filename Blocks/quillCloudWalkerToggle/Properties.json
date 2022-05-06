@@ -1,0 +1,18 @@
+{
+    "Name": "Cloud Walker Toggle",
+    "CreatorName": "Quill Inkwell",
+    "CategoryName": "Cloud Walker",
+    "UniqueID": 3037,
+    "Recipe": {
+    		"Array" : [],
+    		"SizeX": 0,
+    		"SizeY": 0,
+    		"SizeZ": 0
+    },
+    "Yield": 1,
+    "SimilarTo": 4,
+    "Textures": {
+        "Mode": 2,
+        "WithNormals" : false
+    }
+}
