@@ -8,12 +8,14 @@ float TickRate = 10;
 const int Cloud_Walker_Block = 3037;
 const int Height_Calibrator_Block = 3038;
 const int Cloud_Block = 3039;
+const int Minimum_Platform_Radius = 2;
+const int Maximum_Platform_Radius = 4;
+
 
 bool cloudWalkingEnabled = true;
 int playerHeight = 175;
 int platformRadius = 4;
 int16_t platformHeight = 0;
-int progressToBlock = 0;
 
 UniqueID ThisModUniqueIDs[] = { Cloud_Walker_Block, Height_Calibrator_Block, Cloud_Block };
 
@@ -30,21 +32,44 @@ std::vector<Cloud> platformCoords;
 
 // Utility methods
 //********************************
-bool IsBlockCloudReplacable(CoordinateInBlocks At) {
+static bool IsBlockCloudReplacable(CoordinateInBlocks At) {
 	BlockInfo block = GetBlock(At);
 
-	if (   block.Type == EBlockType::Air
+	if (block.Type == EBlockType::Air
 		|| block.Type == EBlockType::GrassFoliage
 		|| block.Type == EBlockType::Flower1
 		|| block.Type == EBlockType::Flower2
 		|| block.Type == EBlockType::Flower3
 		|| block.Type == EBlockType::Flower4
-		|| block.Type == EBlockType::FlowerRainbow) 
+		|| block.Type == EBlockType::FlowerRainbow)
 	{
 		return true;
 	}
 	return false;
 }
+
+std::wstring GetPath() {
+	LPWSTR path;
+	HMODULE hm = NULL;
+
+	if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+		GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+		(LPCWSTR)&IsBlockCloudReplacable, &hm) == 0)
+	{
+		int ret = GetLastError();
+		fprintf(stderr, "GetModuleHandle failed, error = %d\n", ret);
+		// Return or however you want to handle an error.
+	}
+	if (GetModuleFileName(hm, path, sizeof(path)) == 0)
+	{
+		int ret = GetLastError();
+		fprintf(stderr, "GetModuleFileName failed, error = %d\n", ret);
+		// Return or however you want to handle an error.
+	}
+	return (std::wstring)path;
+}
+
+
 
 CoordinateInBlocks GetBlockUnderPlayerFoot() {
 	return GetPlayerLocation() - CoordinateInCentimeters(0, 0, playerHeight + 25);
@@ -140,6 +165,13 @@ void ToggleCloudWalking() {
 	}
 }
 
+void CyclePlatformRadius() {
+	platformRadius++;
+	if (platformRadius < Maximum_Platform_Radius) {
+		platformRadius = Minimum_Platform_Radius;
+	}
+}
+
 /************************************************************* 
 //	Functions (Run automatically by the game, you can put any code you want into them)
 *************************************************************/
@@ -153,6 +185,9 @@ void Event_BlockHitByTool(CoordinateInBlocks At, UniqueID CustomBlockID, wString
 		}
 		else if (ToolName == L"T_Pickaxe_Stone" || ToolName == L"T_Pickaxe_Copper" || ToolName == L"T_Pickaxe_Iron") {
 			platformHeight -= 1;
+		}
+		else if (ToolName == L"T_Arrow") {
+			CyclePlatformRadius();
 		}
 	}
 
@@ -184,12 +219,11 @@ void Event_Tick()
 {
 	if (cloudWalkingEnabled) {
 		CoordinateInBlocks playerLocation = GetPlayerLocation();
+		BlockInfo blockUnderFoot = GetBlock(GetBlockUnderPlayerFoot());
 
-		if (GetBlock(GetBlockUnderPlayerFoot()).CustomBlockID != Cloud_Block) {
+		if (blockUnderFoot.CustomBlockID != Cloud_Block &&
+			blockUnderFoot.Type != EBlockType::Air) {
 			platformHeight = GetBlockUnderPlayerFoot().Z;
-		} 
-		else {
-			progressToBlock = 0;
 		}
 		
 		CoordinateInBlocks platformCenter = CoordinateInBlocks(playerLocation.X, playerLocation.Y, platformHeight);
@@ -200,7 +234,7 @@ void Event_Tick()
 
 void Event_OnLoad()
 {
-	// Load the Player Height and cloud walking sate from Saved data
+	// Load the Player Height, cloud walking, and platform radius sate from Saved data
 	// If the player is cloud walking load the cloud loations and carry on
 }
 
@@ -212,7 +246,7 @@ void Event_OnExit()
 	}
 	
 	// Prune excess clouds
-	// Save Player Height, cloud walking state, and cloud locations to Saved Data.
+	// Save Player Height, cloud walking state, platform radius, and cloud locations to Saved Data.
 }
 
 void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved)
