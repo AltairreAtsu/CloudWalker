@@ -10,7 +10,6 @@ const int Height_Calibrator_Block = 3038;
 const int Cloud_Block = 3039;
 
 bool cloudWalkingEnabled = true;
-// Personally 180 but should drop some for the distance to the headset anyway?
 int playerHeight = 175;
 int platformRadius = 4;
 int16_t platformHeight = 0;
@@ -82,7 +81,7 @@ bool SetPlayerHeightFromCalibrator(CoordinateInBlocks calibratorLocation) {
 	}
 	else {
 		playerHeight = newPlayerHeight;
-		SpawnHintText(calibratorLocation + CoordinateInBlocks(0, 0, 1), L"Calibration Sucessful. Player Height: " + std::to_wstring(playerHeight) + L"cm", 1, 1);
+		SpawnHintText(calibratorLocation + CoordinateInBlocks(0, 0, 1), L"Calibration Sucessful.", 1, 1);
 		return true;
 	}
 }
