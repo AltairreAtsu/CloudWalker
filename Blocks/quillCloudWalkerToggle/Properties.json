@@ -4,13 +4,13 @@
     "CategoryName": "Cloud Walker",
     "UniqueID": 3037,
     "Recipe": {
-    		"Array" : [],
-    		"SizeX": 0,
-    		"SizeY": 0,
-    		"SizeZ": 0
+    		"Array" : [64,64,64,64,64,64,64,64],
+    		"SizeX": 2,
+    		"SizeY": 2,
+    		"SizeZ": 2
     },
     "Yield": 1,
-    "SimilarTo": 4,
+    "SimilarTo": 1,
     "Textures": {
         "Mode": 2,
         "WithNormals" : false

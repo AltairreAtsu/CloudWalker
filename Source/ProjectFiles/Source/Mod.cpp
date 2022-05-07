@@ -13,12 +13,40 @@ bool cloudWalkingEnabled = true;
 // Personally 180 but should drop some for the distance to the headset anyway?
 int playerHeight = 175;
 int platformRadius = 4;
-std::vector<CoordinateInBlocks> platformCoords;
+int16_t platformHeight = 0;
+int progressToBlock = 0;
 
 UniqueID ThisModUniqueIDs[] = { Cloud_Walker_Block, Height_Calibrator_Block, Cloud_Block };
 
+struct Cloud {
+	CoordinateInBlocks location;
+	BlockInfo originalBlock;
+
+	void RestoreBlock() {
+		SetBlock(location, originalBlock);
+	}
+};
+
+std::vector<Cloud> platformCoords;
+
 // Utility methods
 //********************************
+bool IsBlockCloudReplacable(CoordinateInBlocks At) {
+	BlockInfo block = GetBlock(At);
+
+	if (   block.Type == EBlockType::Air
+		|| block.Type == EBlockType::GrassFoliage
+		|| block.Type == EBlockType::Flower1
+		|| block.Type == EBlockType::Flower2
+		|| block.Type == EBlockType::Flower3
+		|| block.Type == EBlockType::Flower4
+		|| block.Type == EBlockType::FlowerRainbow) 
+	{
+		return true;
+	}
+	return false;
+}
+
 CoordinateInBlocks GetBlockUnderPlayerFoot() {
 	return GetPlayerLocation() - CoordinateInCentimeters(0, 0, playerHeight + 25);
 }
@@ -48,48 +76,61 @@ bool SetPlayerHeightFromCalibrator(CoordinateInBlocks calibratorLocation) {
 	CoordinateInCentimeters playerLocation = GetPlayerLocation();
 	int newPlayerHeight = playerLocation.Z - groundLocation.Z;
 
-	if (newPlayerHeight > 0) {
+	if (newPlayerHeight < 0) {
 		SpawnHintText(calibratorLocation + CoordinateInBlocks(0, 0, 1), L"Calibration Failed. Please stand in front of the calibrator.", 1, 1);
 		return false;
 	}
 	else {
-		SpawnHintText(calibratorLocation + CoordinateInBlocks(0, 0, 1), L"Calibration Sucessful.", 1, 1);
 		playerHeight = newPlayerHeight;
+		SpawnHintText(calibratorLocation + CoordinateInBlocks(0, 0, 1), L"Calibration Sucessful. Player Height: " + std::to_wstring(playerHeight) + L"cm", 1, 1);
 		return true;
 	}
 }
 
 void RemovePlatform() {
 	for (int i = 0; i < platformCoords.size(); i++) {
-		SetBlock(platformCoords[i], EBlockType::Air);
+		platformCoords[i].RestoreBlock();
+	}
+	platformCoords.clear();
+}
+
+void SetCloudBlock(CoordinateInBlocks location) {
+	BlockInfo currentBlock = GetBlock(location);
+	SetBlock(location, Cloud_Block);
+	platformCoords.push_back( Cloud(location, currentBlock));
+}
+
+void PruneOldClouds(CoordinateInBlocks centerBlock) {
+	if (platformCoords.size() != 0) {
+		for (int i = 0; i < platformCoords.size(); i++) {
+			bool IsOnAcceptableZLevel = platformCoords[i].location.Z == centerBlock.Z || platformCoords[i].location.Z == centerBlock.Z - 1;
+
+			if (!IsOnAcceptableZLevel ||
+				!IsPointInCircle(centerBlock.X, centerBlock.Y, platformRadius, platformCoords[i].location.X, platformCoords[i].location.Y)) {
+
+				platformCoords[i].RestoreBlock();
+				platformCoords.erase(platformCoords.begin() + i);
+			}
+		}
+	}
+}
+void GeneratePlatformPlane(std::vector<CoordinateInBlocks> coords) {
+	for (int i = 0; i < coords.size(); i++) {
+		BlockInfo currentBlock = GetBlock(coords[i]);
+		if (IsBlockCloudReplacable(coords[i])) {
+			SetCloudBlock(coords[i]);
+		}
 	}
 }
 
 void GeneratePlatform(CoordinateInBlocks centerBlock) {
-	// TODO, Enabling replacing flora with clouds, clouds should be able to restore disturbed flora. Will make it easier to take off.
-	std::vector newPlatformCoords = GetAllPointsInCircle(centerBlock, platformRadius);
+	std::vector newPlatformTopPlaneCoords = GetAllPointsInCircle(centerBlock, platformRadius);
+	std::vector newPlatformBottomPlaneCoords = GetAllPointsInCircle(centerBlock - CoordinateInBlocks(0,0,1), platformRadius);
 
-	if (platformCoords.size() != 0) {
-		for (int i = 0; i < platformCoords.size(); i++) {
-			if (platformCoords[i].Z != centerBlock.Z ||
-				!IsPointInCircle(centerBlock.X, centerBlock.Y, platformRadius, platformCoords[i].X, platformCoords[i].Y)) {
-				
-				SetBlock(platformCoords[i], EBlockType::Air);
-			}
-		}
-	}
-	platformCoords.clear();
+	PruneOldClouds(centerBlock);
 
-	for (int i = 0; i < newPlatformCoords.size(); i++) {
-		BlockInfo currentBlock = GetBlock(newPlatformCoords[i]);
-		if (currentBlock.Type == EBlockType::Air) {
-			SetBlock(newPlatformCoords[i], Cloud_Block);
-			platformCoords.push_back(newPlatformCoords[i]);
-
-		}else if(currentBlock.CustomBlockID == Cloud_Block) {
-			platformCoords.push_back(newPlatformCoords[i]);
-		}
-	}
+	GeneratePlatformPlane(newPlatformBottomPlaneCoords);
+	GeneratePlatformPlane(newPlatformTopPlaneCoords);
 }
 
 void ToggleCloudWalking() {
@@ -109,10 +150,10 @@ void Event_BlockHitByTool(CoordinateInBlocks At, UniqueID CustomBlockID, wString
 {
 	if (CustomBlockID == Cloud_Block) {
 		if (ToolName == L"T_Stick") {
-			// Set Target Height +1
+			platformHeight += 1;
 		}
 		else if (ToolName == L"T_Pickaxe_Stone" || ToolName == L"T_Pickaxe_Copper" || ToolName == L"T_Pickaxe_Iron") {
-			// Set Target Height -1
+			platformHeight -= 1;
 		}
 	}
 
@@ -126,15 +167,35 @@ void Event_BlockHitByTool(CoordinateInBlocks At, UniqueID CustomBlockID, wString
 		if (ToolName == L"T_Stick") {
 			ToggleCloudWalking();
 		}
+		if (ToolName == L"T_Arrow") {
+			CoordinateInBlocks HeightCalibratorLocation = At + CoordinateInBlocks(1, 0, 0);
+			BlockInfo currentBlock = GetBlock(HeightCalibratorLocation);
+			if (currentBlock.Type == EBlockType::Air) {
+				SetBlock(HeightCalibratorLocation, Height_Calibrator_Block);
+			}
+			else if (currentBlock.CustomBlockID == Height_Calibrator_Block) {
+				SetBlock(HeightCalibratorLocation, EBlockType::Air);
+			}
+			
+		}
 	}
 }
 
 void Event_Tick()
 {
 	if (cloudWalkingEnabled) {
-		// TODO Gradually transition up and down to target heights, pace the speed of the transition to allow the player to asced
-		// or descend with the platform.
-		GeneratePlatform(GetBlockUnderPlayerFoot());
+		CoordinateInBlocks playerLocation = GetPlayerLocation();
+
+		if (GetBlock(GetBlockUnderPlayerFoot()).CustomBlockID != Cloud_Block) {
+			platformHeight = GetBlockUnderPlayerFoot().Z;
+		} 
+		else {
+			progressToBlock = 0;
+		}
+		
+		CoordinateInBlocks platformCenter = CoordinateInBlocks(playerLocation.X, playerLocation.Y, platformHeight);
+
+		GeneratePlatform(platformCenter);
 	}
 }
 
@@ -161,7 +222,10 @@ void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved
 }
 void Event_BlockDestroyed(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved)
 {
-
+	if (CustomBlockID == Cloud_Walker_Block) {
+		if (GetBlock(At + CoordinateInBlocks(1, 0, 0)).CustomBlockID == Height_Calibrator_Block)
+			SetBlock(At + CoordinateInBlocks(1, 0, 0), EBlockType::Air);
+	}
 }
 /*******************************************************
 Advanced functions
