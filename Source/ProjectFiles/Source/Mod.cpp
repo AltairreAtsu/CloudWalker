@@ -10,11 +10,14 @@ const int Height_Calibrator_Block = 3038;
 const int Cloud_Block = 3039;
 const int Minimum_Platform_Radius = 2;
 const int Maximum_Platform_Radius = 4;
-
+const int World_Max_Height = 720;
+const int World_Min_Height = 0;
 
 bool cloudWalkingEnabled = true;
+bool platformIsLanding = false;
 int playerHeight = 175;
 int platformRadius = 4;
+int progressToBlock = 0;
 int16_t platformHeight = 0;
 
 UniqueID ThisModUniqueIDs[] = { Cloud_Walker_Block, Height_Calibrator_Block, Cloud_Block };
@@ -68,8 +71,6 @@ std::wstring GetPath() {
 	}
 	return (std::wstring)path;
 }
-
-
 
 CoordinateInBlocks GetBlockUnderPlayerFoot() {
 	return GetPlayerLocation() - CoordinateInCentimeters(0, 0, playerHeight + 25);
@@ -172,6 +173,14 @@ void CyclePlatformRadius() {
 	}
 }
 
+bool SetPlatformHeight(int16_t newHeight) {
+	if (newHeight > World_Min_Height || newHeight < World_Max_Height) {
+		return false;
+	}
+	platformHeight = newHeight;
+	return true;
+}
+
 /************************************************************* 
 //	Functions (Run automatically by the game, you can put any code you want into them)
 *************************************************************/
@@ -181,13 +190,18 @@ void Event_BlockHitByTool(CoordinateInBlocks At, UniqueID CustomBlockID, wString
 {
 	if (CustomBlockID == Cloud_Block) {
 		if (ToolName == L"T_Stick") {
-			platformHeight += 1;
+			platformIsLanding = !platformIsLanding;
 		}
-		else if (ToolName == L"T_Pickaxe_Stone" || ToolName == L"T_Pickaxe_Copper" || ToolName == L"T_Pickaxe_Iron") {
-			platformHeight -= 1;
-		}
-		else if (ToolName == L"T_Arrow") {
-			CyclePlatformRadius();
+		if (!platformIsLanding) {
+			if (ToolName == L"T_Axe_Stone" || ToolName == L"T_Axe_Copper" || ToolName == L"T_Axe_Iron") {
+				SetPlatformHeight(platformHeight + 1);
+			}
+			else if (ToolName == L"T_Pickaxe_Stone" || ToolName == L"T_Pickaxe_Copper" || ToolName == L"T_Pickaxe_Iron") {
+				SetPlatformHeight(platformHeight - 1);
+			}
+			else if (ToolName == L"T_Arrow") {
+				CyclePlatformRadius();
+			}
 		}
 	}
 
@@ -205,6 +219,7 @@ void Event_BlockHitByTool(CoordinateInBlocks At, UniqueID CustomBlockID, wString
 			CoordinateInBlocks HeightCalibratorLocation = At + CoordinateInBlocks(1, 0, 0);
 			BlockInfo currentBlock = GetBlock(HeightCalibratorLocation);
 			if (currentBlock.Type == EBlockType::Air) {
+				SpawnHintText(At + CoordinateInBlocks(0, 0, 1), L"Please remember to stand up straight and keep your feet level with the calibrator before calibrating your height.", 1, 1);
 				SetBlock(HeightCalibratorLocation, Height_Calibrator_Block);
 			}
 			else if (currentBlock.CustomBlockID == Height_Calibrator_Block) {
@@ -223,9 +238,17 @@ void Event_Tick()
 
 		if (blockUnderFoot.CustomBlockID != Cloud_Block &&
 			blockUnderFoot.Type != EBlockType::Air) {
-			platformHeight = GetBlockUnderPlayerFoot().Z;
+			SetPlatformHeight(GetBlockUnderPlayerFoot().Z);
+			platformIsLanding = false;
 		}
-		
+		if (platformIsLanding) {
+			progressToBlock++;
+			if (progressToBlock <= 4) {
+				progressToBlock = 0;
+				SetPlatformHeight(platformHeight - 1);
+			}
+		}
+
 		CoordinateInBlocks platformCenter = CoordinateInBlocks(playerLocation.X, playerLocation.Y, platformHeight);
 
 		GeneratePlatform(platformCenter);
