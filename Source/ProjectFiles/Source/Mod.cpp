@@ -1,4 +1,7 @@
 #include "GameAPI.h"
+#include <iostream>
+#include <fstream>
+#include <string>
 
 /************************************************************
 	Config Variables (Set these to whatever you need. They are automatically read by the game.)
@@ -12,12 +15,14 @@ const int Minimum_Platform_Radius = 2;
 const int Maximum_Platform_Radius = 4;
 const int World_Max_Height = 720;
 const int World_Min_Height = 0;
+const int Save_Tick_Interval = 10;
 
 bool cloudWalkingEnabled = true;
 bool platformIsLanding = false;
 int playerHeight = 175;
 int platformRadius = 4;
 int progressToBlock = 0;
+int progressToSave = 0;
 int16_t platformHeight = 0;
 
 UniqueID ThisModUniqueIDs[] = { Cloud_Walker_Block, Height_Calibrator_Block, Cloud_Block };
@@ -52,24 +57,7 @@ static bool IsBlockCloudReplacable(CoordinateInBlocks At) {
 }
 
 std::wstring GetPath() {
-	LPWSTR path;
-	HMODULE hm = NULL;
-
-	if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
-		GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-		(LPCWSTR)&IsBlockCloudReplacable, &hm) == 0)
-	{
-		int ret = GetLastError();
-		fprintf(stderr, "GetModuleHandle failed, error = %d\n", ret);
-		// Return or however you want to handle an error.
-	}
-	if (GetModuleFileName(hm, path, sizeof(path)) == 0)
-	{
-		int ret = GetLastError();
-		fprintf(stderr, "GetModuleFileName failed, error = %d\n", ret);
-		// Return or however you want to handle an error.
-	}
-	return (std::wstring)path;
+	return L"/ModSave/Cloud Walker/" + GetWorldName() + L"/save.txt";
 }
 
 CoordinateInBlocks GetBlockUnderPlayerFoot() {
@@ -96,6 +84,46 @@ std::vector<CoordinateInBlocks> GetAllPointsInCircle(CoordinateInBlocks At, int 
 	return circleCords;
 }
 
+// File Methods
+//********************************
+std::string BoolToString(bool value) {
+	return (value) ? "1" : "0";
+}
+bool StringToBool(std::string string) {
+	return string == "1";
+}
+
+void SaveData() {
+	std::fstream saveFile;
+	saveFile.open(GetPath(), std::ios::out);
+	if (saveFile.is_open()) {
+		saveFile << std::to_string(playerHeight) + "\n";
+		saveFile << BoolToString(cloudWalkingEnabled) + "\n";
+		saveFile << std::to_string(platformRadius) + "\n";
+		saveFile.close();
+	}
+}
+
+void LoadData() {
+	std::fstream saveFile;
+	saveFile.open(GetPath(), std::ios::in);
+	if (saveFile.is_open()) {
+		std::string line;
+		std::getline(saveFile, line);
+		playerHeight = std::stoi(line);
+
+		std::getline(saveFile, line);
+		cloudWalkingEnabled = StringToBool(line);
+
+		std::getline(saveFile, line);
+		platformRadius = std::stoi(line);
+
+		saveFile.close();
+	}
+}
+
+// Height Calibration
+//********************************
 bool SetPlayerHeightFromCalibrator(CoordinateInBlocks calibratorLocation) {
 	CoordinateInCentimeters groundLocation = calibratorLocation - CoordinateInCentimeters(0, 0, 25);
 	CoordinateInCentimeters playerLocation = GetPlayerLocation();
@@ -112,6 +140,8 @@ bool SetPlayerHeightFromCalibrator(CoordinateInBlocks calibratorLocation) {
 	}
 }
 
+// Platform Control Methods
+//********************************
 void RemovePlatform() {
 	for (int i = 0; i < platformCoords.size(); i++) {
 		platformCoords[i].RestoreBlock();
@@ -158,6 +188,16 @@ void GeneratePlatform(CoordinateInBlocks centerBlock) {
 	GeneratePlatformPlane(newPlatformTopPlaneCoords);
 }
 
+// Setters and Variable Management
+//********************************
+bool SetPlatformHeight(int16_t newHeight) {
+	if (newHeight > World_Min_Height || newHeight < World_Max_Height) {
+		return false;
+	}
+	platformHeight = newHeight;
+	return true;
+}
+
 void ToggleCloudWalking() {
 	cloudWalkingEnabled = !cloudWalkingEnabled;
 
@@ -173,13 +213,6 @@ void CyclePlatformRadius() {
 	}
 }
 
-bool SetPlatformHeight(int16_t newHeight) {
-	if (newHeight > World_Min_Height || newHeight < World_Max_Height) {
-		return false;
-	}
-	platformHeight = newHeight;
-	return true;
-}
 
 /************************************************************* 
 //	Functions (Run automatically by the game, you can put any code you want into them)
@@ -253,23 +286,36 @@ void Event_Tick()
 
 		GeneratePlatform(platformCenter);
 	}
+
+	progressToSave++;
+	if (progressToSave >= Save_Tick_Interval) {
+		progressToSave = 0;
+		SaveData();
+	}
 }
 
 void Event_OnLoad()
 {
-	// Load the Player Height, cloud walking, and platform radius sate from Saved data
-	// If the player is cloud walking load the cloud loations and carry on
+	LoadData();
+	if (cloudWalkingEnabled) {
+		CoordinateInBlocks blockUnderFoot = GetBlockUnderPlayerFoot();
+		SetPlatformHeight(blockUnderFoot.Z);
+		
+		std::vector<CoordinateInBlocks> coords = GetAllCoordinatesInRadius(GetPlayerLocation(), Maximum_Platform_Radius + 5);
+		for (int i = 0; i <= coords.size(); i++) {
+			BlockInfo block = GetBlock(coords[i]);
+			if (block.CustomBlockID == Cloud_Block) {
+				platformCoords.push_back(Cloud(coords[i], EBlockType::Air));
+			}
+		}
+		CoordinateInBlocks playerLocation = GetPlayerLocation();
+		PruneOldClouds(CoordinateInBlocks(playerLocation.X, playerLocation.Y, platformHeight));
+	}
 }
 
 void Event_OnExit()
 {
-	// TEMPORARY FUNCTION
-	if (platformCoords.size() > 0) {
-		RemovePlatform();
-	}
-	
-	// Prune excess clouds
-	// Save Player Height, cloud walking state, platform radius, and cloud locations to Saved Data.
+	// Only used for memory cleanup
 }
 
 void Event_BlockPlaced(CoordinateInBlocks At, UniqueID CustomBlockID, bool Moved)
