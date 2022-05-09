@@ -17,7 +17,7 @@ const int World_Max_Height = 720;
 const int World_Min_Height = 0;
 const int Save_Tick_Interval = 10;
 
-bool cloudWalkingEnabled = true;
+bool cloudWalkingEnabled = false;
 bool platformIsLanding = false;
 int playerHeight = 175;
 int platformRadius = 4;
@@ -56,8 +56,28 @@ static bool IsBlockCloudReplacable(CoordinateInBlocks At) {
 	return false;
 }
 
-std::wstring GetPath() {
-	return L"/ModSave/Cloud Walker/" + GetWorldName() + L"/save.txt";
+std::wstring GetFilePath() {
+	wchar_t path[MAX_PATH];
+	HMODULE hm = NULL;
+
+	if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+		GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+		(LPCWSTR)&IsBlockCloudReplacable, &hm) == 0)
+	{
+		Log(L"Failed");
+
+	}
+	if (GetModuleFileNameW(hm, path, sizeof(path)) == 0)
+	{
+		Log(L"Failed");
+	}
+	
+	std::wstring p = path;
+	size_t found = p.find_last_of(L"/\\");
+	std::wstring p1 = p.substr(0, found);
+	p1 = p1 + std::wstring(L"\\") + GetWorldName() + L".txt";
+	Log(p1);
+	return p1;
 }
 
 CoordinateInBlocks GetBlockUnderPlayerFoot() {
@@ -94,8 +114,9 @@ bool StringToBool(std::string string) {
 }
 
 void SaveData() {
+	Log(L"Attemping to Save Data");
 	std::fstream saveFile;
-	saveFile.open(GetPath(), std::ios::out);
+	saveFile.open(GetFilePath(), std::ios::out);
 	if (saveFile.is_open()) {
 		saveFile << std::to_string(playerHeight) + "\n";
 		saveFile << BoolToString(cloudWalkingEnabled) + "\n";
@@ -106,7 +127,7 @@ void SaveData() {
 
 void LoadData() {
 	std::fstream saveFile;
-	saveFile.open(GetPath(), std::ios::in);
+	saveFile.open(GetFilePath(), std::ios::in);
 	if (saveFile.is_open()) {
 		std::string line;
 		std::getline(saveFile, line);
@@ -191,19 +212,21 @@ void GeneratePlatform(CoordinateInBlocks centerBlock) {
 // Setters and Variable Management
 //********************************
 bool SetPlatformHeight(int16_t newHeight) {
-	if (newHeight > World_Min_Height || newHeight < World_Max_Height) {
+	if (newHeight < World_Min_Height || newHeight > World_Max_Height) {
 		return false;
 	}
 	platformHeight = newHeight;
 	return true;
 }
 
-void ToggleCloudWalking() {
+void ToggleCloudWalking(CoordinateInBlocks At) {
 	cloudWalkingEnabled = !cloudWalkingEnabled;
 
 	if (!cloudWalkingEnabled) {
 		RemovePlatform();
 	}
+	std::wstring message = (cloudWalkingEnabled) ? L"Cloud Walking Enabled" : L"Cloud Walking Disabled";
+	SpawnHintText(At + CoordinateInBlocks(0, 0, 1), message, 1, 1);
 }
 
 void CyclePlatformRadius() {
@@ -246,7 +269,7 @@ void Event_BlockHitByTool(CoordinateInBlocks At, UniqueID CustomBlockID, wString
 
 	if (CustomBlockID == Cloud_Walker_Block) {
 		if (ToolName == L"T_Stick") {
-			ToggleCloudWalking();
+			ToggleCloudWalking(At);
 		}
 		if (ToolName == L"T_Arrow") {
 			CoordinateInBlocks HeightCalibratorLocation = At + CoordinateInBlocks(1, 0, 0);
@@ -276,7 +299,7 @@ void Event_Tick()
 		}
 		if (platformIsLanding) {
 			progressToBlock++;
-			if (progressToBlock <= 4) {
+			if (progressToBlock <= 10) {
 				progressToBlock = 0;
 				SetPlatformHeight(platformHeight - 1);
 			}
