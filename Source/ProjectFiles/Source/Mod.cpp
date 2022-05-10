@@ -16,6 +16,7 @@ const int Maximum_Platform_Radius = 4;
 const int World_Max_Height = 720;
 const int World_Min_Height = 0;
 const int Save_Tick_Interval = 10;
+const int Decent_Tick_Interval = 15;
 
 bool cloudWalkingEnabled = false;
 bool platformIsLanding = false;
@@ -76,7 +77,6 @@ std::wstring GetFilePath() {
 	size_t found = p.find_last_of(L"/\\");
 	std::wstring p1 = p.substr(0, found);
 	p1 = p1 + std::wstring(L"\\") + GetWorldName() + L".txt";
-	Log(p1);
 	return p1;
 }
 
@@ -114,7 +114,6 @@ bool StringToBool(std::string string) {
 }
 
 void SaveData() {
-	Log(L"Attemping to Save Data");
 	std::fstream saveFile;
 	saveFile.open(GetFilePath(), std::ios::out);
 	if (saveFile.is_open()) {
@@ -299,7 +298,7 @@ void Event_Tick()
 		}
 		if (platformIsLanding) {
 			progressToBlock++;
-			if (progressToBlock <= 10) {
+			if (progressToBlock <= Decent_Tick_Interval) {
 				progressToBlock = 0;
 				SetPlatformHeight(platformHeight - 1);
 			}
