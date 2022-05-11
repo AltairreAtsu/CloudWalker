@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <chrono>
 
 /************************************************************
 	Config Variables (Set these to whatever you need. They are automatically read by the game.)
@@ -16,7 +17,7 @@ const int Maximum_Platform_Radius = 4;
 const int World_Max_Height = 720;
 const int World_Min_Height = 0;
 const int Save_Tick_Interval = 10;
-const int Decent_Tick_Interval = 15;
+const int Decent_Tick_Interval = 5;
 
 bool cloudWalkingEnabled = false;
 bool platformIsLanding = false;
@@ -84,17 +85,17 @@ CoordinateInBlocks GetBlockUnderPlayerFoot() {
 	return GetPlayerLocation() - CoordinateInCentimeters(0, 0, playerHeight + 25);
 }
 
-bool IsPointInCircle(int circleX, int circleY, int radius, int x, int y) {
+bool IsPointInCircle(int64_t circleX, int64_t circleY, int64_t radius, int64_t x, int64_t y) {
 	return ((x - circleX) * (x - circleX) + (y - circleY) * (y - circleY) <= radius * radius);
 }
 
 std::vector<CoordinateInBlocks> GetAllPointsInCircle(CoordinateInBlocks At, int radius) {
 	std::vector<CoordinateInBlocks> circleCords;
-	int centerX = At.X;
-	int centerY = At.Y;
+	int64_t centerX = At.X;
+	int64_t centerY = At.Y;
 
-	for (int y = centerY - radius; y <= centerY + radius; y++) {
-		for (int x = centerX - radius; x <= centerX + radius; x++) {
+	for (int64_t y = centerY - radius; y <= centerY + radius; y++) {
+		for (int64_t x = centerX - radius; x <= centerX + radius; x++) {
 			if (IsPointInCircle(centerX, centerY, radius, x, y) ) {
 				circleCords.push_back((CoordinateInBlocks(x, y, At.Z)));
 			}
@@ -113,6 +114,59 @@ bool StringToBool(std::string string) {
 	return string == "1";
 }
 
+std::string CoordinateToString(const CoordinateInBlocks& coord) {
+	return std::to_string(coord.X) + "," + std::to_string(coord.Y) + "," + std::to_string(coord.Z);
+}
+CoordinateInBlocks StringToCoordinate(std::string text) {
+	std::string delimeter = ",";
+	size_t pos = text.find(delimeter);
+	std::string token = text.substr(0, pos);
+	text.erase(0, pos + delimeter.length());
+	int x = std::stoi(token);
+
+	pos = text.find(delimeter);
+	token = text.substr(0, pos);
+	text.erase(0, pos + delimeter.length());
+	int y = std::stoi(token);
+
+	pos = text.find(delimeter);
+	token = text.substr(0, pos);
+	text.erase(0, pos + delimeter.length());
+	int z = std::stoi(token);
+
+	return CoordinateInBlocks(x, y, z);
+}
+
+std::string BlockInfoToString(BlockInfo block) {
+	return std::to_string((uint8_t)block.Type);
+}
+BlockInfo StringToBlockInfo(std::string text) {
+	return BlockInfo((EBlockType)stoi(text));
+}
+
+std::string BlockCordToString(const Cloud& cloud) {
+	return CoordinateToString(cloud.location) + " " + BlockInfoToString(cloud.originalBlock);
+}
+Cloud StringToBlockCoord(std::string text) {
+	std::string delimeter = " ";
+	size_t pos = text.find(delimeter);
+	std::string coordinateText = text.substr(0, pos);
+	text.erase(0, pos + delimeter.length());
+
+	CoordinateInBlocks coord = StringToCoordinate(coordinateText);
+	BlockInfo block = StringToBlockInfo(text);
+
+	return Cloud(coord, block);
+}
+
+std::string PlatformToString() {
+	std::string platformString;
+	for (int i = 0; i <= platformCoords.size(); i++) {
+		platformString += BlockCordToString(platformCoords[i]) + std::string("\n");
+	}
+	return platformString;
+}
+
 void SaveData() {
 	std::fstream saveFile;
 	saveFile.open(GetFilePath(), std::ios::out);
@@ -120,6 +174,8 @@ void SaveData() {
 		saveFile << std::to_string(playerHeight) + "\n";
 		saveFile << BoolToString(cloudWalkingEnabled) + "\n";
 		saveFile << std::to_string(platformRadius) + "\n";
+		if(platformCoords.size() > 0)
+			saveFile << PlatformToString();
 		saveFile.close();
 	}
 }
@@ -137,6 +193,10 @@ void LoadData() {
 
 		std::getline(saveFile, line);
 		platformRadius = std::stoi(line);
+
+		while (std::getline(saveFile, line)) {
+			platformCoords.push_back(StringToBlockCoord(line));
+		}
 
 		saveFile.close();
 	}
@@ -245,11 +305,11 @@ void Event_BlockHitByTool(CoordinateInBlocks At, UniqueID CustomBlockID, wString
 {
 	if (CustomBlockID == Cloud_Block) {
 		if (ToolName == L"T_Stick") {
-			platformIsLanding = !platformIsLanding;
+			SetPlatformHeight(platformHeight + 1);
 		}
 		if (!platformIsLanding) {
 			if (ToolName == L"T_Axe_Stone" || ToolName == L"T_Axe_Copper" || ToolName == L"T_Axe_Iron") {
-				SetPlatformHeight(platformHeight + 1);
+				platformIsLanding = !platformIsLanding;
 			}
 			else if (ToolName == L"T_Pickaxe_Stone" || ToolName == L"T_Pickaxe_Copper" || ToolName == L"T_Pickaxe_Iron") {
 				SetPlatformHeight(platformHeight - 1);
@@ -270,11 +330,21 @@ void Event_BlockHitByTool(CoordinateInBlocks At, UniqueID CustomBlockID, wString
 		if (ToolName == L"T_Stick") {
 			ToggleCloudWalking(At);
 		}
+		if (ToolName == L"T_Axe_Stone" || ToolName == L"T_Axe_Copper" || ToolName == L"T_Axe_Iron") {
+			RemovePlatform();
+			auto coords = GetAllCoordinatesInRadius(At, 10);
+			for (int i = 0; i < coords.size(); i++) {
+				BlockInfo block = GetBlock(coords[i]);
+				if (block.CustomBlockID == Cloud_Block) {
+					SetBlock(coords[i], EBlockType::Air);
+				}
+			}
+		}
 		if (ToolName == L"T_Arrow") {
 			CoordinateInBlocks HeightCalibratorLocation = At + CoordinateInBlocks(1, 0, 0);
 			BlockInfo currentBlock = GetBlock(HeightCalibratorLocation);
 			if (currentBlock.Type == EBlockType::Air) {
-				SpawnHintText(At + CoordinateInBlocks(0, 0, 1), L"Please remember to stand up straight and keep your feet level with the calibrator before calibrating your height.", 1, 1);
+				SpawnHintText(At + CoordinateInBlocks(0, 0, 1), L"Please remember to stand up straight and keep your feet level\n with the calibrator before calibrating your height.", 1, 1);
 				SetBlock(HeightCalibratorLocation, Height_Calibrator_Block);
 			}
 			else if (currentBlock.CustomBlockID == Height_Calibrator_Block) {
@@ -298,7 +368,7 @@ void Event_Tick()
 		}
 		if (platformIsLanding) {
 			progressToBlock++;
-			if (progressToBlock <= Decent_Tick_Interval) {
+			if (progressToBlock >= Decent_Tick_Interval) {
 				progressToBlock = 0;
 				SetPlatformHeight(platformHeight - 1);
 			}
@@ -323,13 +393,6 @@ void Event_OnLoad()
 		CoordinateInBlocks blockUnderFoot = GetBlockUnderPlayerFoot();
 		SetPlatformHeight(blockUnderFoot.Z);
 		
-		std::vector<CoordinateInBlocks> coords = GetAllCoordinatesInRadius(GetPlayerLocation(), Maximum_Platform_Radius + 5);
-		for (int i = 0; i <= coords.size(); i++) {
-			BlockInfo block = GetBlock(coords[i]);
-			if (block.CustomBlockID == Cloud_Block) {
-				platformCoords.push_back(Cloud(coords[i], EBlockType::Air));
-			}
-		}
 		CoordinateInBlocks playerLocation = GetPlayerLocation();
 		PruneOldClouds(CoordinateInBlocks(playerLocation.X, playerLocation.Y, platformHeight));
 	}
