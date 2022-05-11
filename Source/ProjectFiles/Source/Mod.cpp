@@ -290,7 +290,7 @@ void ToggleCloudWalking(CoordinateInBlocks At) {
 
 void CyclePlatformRadius() {
 	platformRadius++;
-	if (platformRadius < Maximum_Platform_Radius) {
+	if (platformRadius > Maximum_Platform_Radius) {
 		platformRadius = Minimum_Platform_Radius;
 	}
 }
