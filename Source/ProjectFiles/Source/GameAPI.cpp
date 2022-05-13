@@ -46,15 +46,41 @@ CoordinateInCentimeters GetPlayerLocation()
 	return InternalFunctions::I_GetPlayerLocation();
 }
 
+bool SetPlayerLocation(CoordinateInCentimeters To)
+{
+	return InternalFunctions::I_SetPlayerLocation(To);
+}
+
 DirectionVectorInCentimeters GetPlayerViewDirection()
 {
 	DirectionVectorInCentimetersC Type = InternalFunctions::I_GetPlayerViewDirection();
 	return*((DirectionVectorInCentimeters*)(&Type));
 }
 
+CoordinateInCentimeters GetHandLocation(bool LeftHand)
+{
+	return InternalFunctions::I_GetHandLocation(LeftHand);
+}
+
+CoordinateInCentimeters GetIndexFingerTipLocation(bool LeftHand)
+{
+	return InternalFunctions::I_GetIndexFingerTipLocation(LeftHand);
+}
+
 wString GetWorldName()
 {
 	return wString(InternalFunctions::I_GetWorldName());
+}
+
+float GetTimeOfDay()
+{
+	return InternalFunctions::I_GetTimeOfDay();
+}
+
+bool IsCurrentlyNight()
+{
+	float Time = GetTimeOfDay();
+	return (Time < 600 || Time > 1800);
 }
 
 
@@ -105,12 +131,50 @@ std::vector<CoordinateInBlocks> GetAllCoordinatesInRadius(CoordinateInBlocks At,
 	return ReturnCoordinates;
 }
 
+
+
+#pragma warning(disable:6386)
+wString GetThisModFolderPathInternal()
+{
+	wchar_t path[MAX_PATH];
+	HMODULE hm = NULL;
+
+	if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+		GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+		(LPCWSTR)&GetAllCoordinatesInRadius, &hm) == 0)
+	{
+		return std::wstring(L"Error");
+	}
+	if (GetModuleFileNameW(hm, path, sizeof(path)) == 0)
+	{
+		return std::wstring(L"Error");
+	}
+
+	std::wstring StringToReturn = std::wstring(path);
+	StringToReturn = StringToReturn.substr(0, StringToReturn.find_last_of(L"\\/"));
+
+	StringToReturn += L"\\";
+
+	return StringToReturn;
+}
+#pragma warning(default:6386)
+
+const wString& GetThisModFolderPath()
+{
+	static const std::wstring Path = GetThisModFolderPathInternal();
+
+	return Path;
+}
+
+
+
+
 template<class T>
 constexpr auto absolute(T const& x) {
 	return x < 0 ? -x : x;
 }
 
-static __forceinline uint64_t rotl(const uint64_t x, int k) {
+constexpr static __forceinline uint64_t rotl(const uint64_t x, int k) {
 	return (x << k) | (x >> (64 - k));
 }
 
@@ -153,7 +217,8 @@ int32_t GetRandomInt()
 	return int32_t(uint32_t(xoroshiro128p()) / DivideBy) + Min;
 }
 
+
 int main() 
 {
-	
+
 }

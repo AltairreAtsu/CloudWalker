@@ -1,15 +1,4 @@
-Cloud Walker by Quill Inkwell
-Version 0.1
-
-Installation Instructions:
-===============================================
-The following zip is packaged to allow for easy installation of the Mod into your game.
-Simply extract the contents of the provided zip file into your CyubeVR Mods Folder.
-"cyubeVR/cyubeVR/Mods"
-If you are updating the mod allow it to overwrite any existing mod files it encounters.
-
-Usage Instructions:
-===============================================
+Thank you for downloading and trying out my mod!
 To use you need to craft the Cloud Walker Toggle block from the "Cloud Walker" crafting 
 category. Now place the block anywhere in the world. Next take out your bow and shoot
 the block with an arrow. This will place the height calibrator block into the world.
@@ -28,12 +17,3 @@ While on the ground or solid blocks the platform will always be set to the block
 your foot. If you should accidently raise the cloud above your head you should still be
 kept from falling due to a bug in the game. Simply lower the cloud back down to your
 height and continue as normal.
-
-
-Uninstallation Instructions:
-===============================================
-Simply delete the "CloudWalker__V1" folder from your "APIMods" folder.
-To remove the blocks delete the following folders from your "Blocks" folder:
-quillCloud
-quillCloudWalkerToggle
-quillHeightCalibrator

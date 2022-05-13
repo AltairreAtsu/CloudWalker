@@ -18,9 +18,13 @@ const int World_Max_Height = 720;
 const int World_Min_Height = 0;
 const int Save_Tick_Interval = 10;
 const int Decent_Tick_Interval = 5;
+const int Accent_Tick_Interval = 8;
+const int Hand_Trigger_Distance_Threshold = 15;
+const double Rise_Height_Trigger_Threshold = .30;
 
 bool cloudWalkingEnabled = false;
 bool platformIsLanding = false;
+bool gestureMode = true;
 int playerHeight = 175;
 int platformRadius = 4;
 int progressToBlock = 0;
@@ -103,6 +107,21 @@ std::vector<CoordinateInBlocks> GetAllPointsInCircle(CoordinateInBlocks At, int 
 	}
 	circleCords.push_back(At);
 	return circleCords;
+}
+
+int GetDistanceBetweenHands() {
+	CoordinateInCentimeters rightHandLocation = GetHandLocation(false);
+	CoordinateInCentimeters leftHandLocation = GetHandLocation(true);
+
+	int64_t distanceX = rightHandLocation.X - leftHandLocation.X;
+	int64_t distanceY = rightHandLocation.Y - leftHandLocation.Y;
+	int16_t distanceZ = rightHandLocation.Z - leftHandLocation.Z;
+
+	return sqrt((distanceX * distanceX) + (distanceY * distanceY) + (distanceZ * distanceZ));
+}
+
+bool IsHandAboveRiseThreshold() {
+	return GetHandLocation(false).Z >= GetPlayerLocation().Z - (playerHeight * Rise_Height_Trigger_Threshold);
 }
 
 // File Methods
@@ -268,6 +287,17 @@ void GeneratePlatform(CoordinateInBlocks centerBlock) {
 	GeneratePlatformPlane(newPlatformTopPlaneCoords);
 }
 
+void PurgeClouds(CoordinateInBlocks At){
+	RemovePlatform();
+	auto coords = GetAllCoordinatesInRadius(At, 10);
+	for (int i = 0; i < coords.size(); i++) {
+		BlockInfo block = GetBlock(coords[i]);
+		if (block.CustomBlockID == Cloud_Block) {
+			SetBlock(coords[i], EBlockType::Air);
+		}
+	}
+}
+
 // Setters and Variable Management
 //********************************
 bool SetPlatformHeight(int16_t newHeight) {
@@ -304,15 +334,9 @@ void CyclePlatformRadius() {
 void Event_BlockHitByTool(CoordinateInBlocks At, UniqueID CustomBlockID, wString ToolName)
 {
 	if (CustomBlockID == Cloud_Block) {
-		if (ToolName == L"T_Stick") {
-			SetPlatformHeight(platformHeight + 1);
-		}
 		if (!platformIsLanding) {
-			if (ToolName == L"T_Axe_Stone" || ToolName == L"T_Axe_Copper" || ToolName == L"T_Axe_Iron") {
-				platformIsLanding = !platformIsLanding;
-			}
-			else if (ToolName == L"T_Pickaxe_Stone" || ToolName == L"T_Pickaxe_Copper" || ToolName == L"T_Pickaxe_Iron") {
-				SetPlatformHeight(platformHeight - 1);
+			if ( (ToolName == L"T_Axe_Stone" || ToolName == L"T_Axe_Copper" || ToolName == L"T_Axe_Iron")) {
+				PurgeClouds(At);
 			}
 			else if (ToolName == L"T_Arrow") {
 				CyclePlatformRadius();
@@ -331,14 +355,7 @@ void Event_BlockHitByTool(CoordinateInBlocks At, UniqueID CustomBlockID, wString
 			ToggleCloudWalking(At);
 		}
 		if (ToolName == L"T_Axe_Stone" || ToolName == L"T_Axe_Copper" || ToolName == L"T_Axe_Iron") {
-			RemovePlatform();
-			auto coords = GetAllCoordinatesInRadius(At, 10);
-			for (int i = 0; i < coords.size(); i++) {
-				BlockInfo block = GetBlock(coords[i]);
-				if (block.CustomBlockID == Cloud_Block) {
-					SetBlock(coords[i], EBlockType::Air);
-				}
-			}
+			PurgeClouds(At);
 		}
 		if (ToolName == L"T_Arrow") {
 			CoordinateInBlocks HeightCalibratorLocation = At + CoordinateInBlocks(1, 0, 0);
@@ -366,11 +383,23 @@ void Event_Tick()
 			SetPlatformHeight(GetBlockUnderPlayerFoot().Z);
 			platformIsLanding = false;
 		}
-		if (platformIsLanding) {
-			progressToBlock++;
-			if (progressToBlock >= Decent_Tick_Interval) {
-				progressToBlock = 0;
-				SetPlatformHeight(platformHeight - 1);
+
+		if (gestureMode) {
+			if (GetDistanceBetweenHands() <= Hand_Trigger_Distance_Threshold) {
+				if (IsHandAboveRiseThreshold()) {
+					progressToBlock++;
+					if (progressToBlock >= Decent_Tick_Interval) {
+						progressToBlock = 0;
+						platformHeight++;
+					}
+				}
+				else {
+					progressToBlock++;
+					if (progressToBlock >= Accent_Tick_Interval) {
+						progressToBlock = 0;
+						platformHeight--;
+					}
+				}
 			}
 		}
 
@@ -378,6 +407,8 @@ void Event_Tick()
 
 		GeneratePlatform(platformCenter);
 	}
+
+	
 
 	progressToSave++;
 	if (progressToSave >= Save_Tick_Interval) {

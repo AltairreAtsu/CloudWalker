@@ -62,8 +62,7 @@ using namespace ModAPI;
 *	Sets the player location. Be careful with this, if you set it to something far away, the only way for the player to ever get back to their base would
 *	probably be to kill themselves
 */
-	void SetPlayerLocation(CoordinateInCentimeters To);
-
+	bool SetPlayerLocation(CoordinateInCentimeters To);
 
 /*
 *	Returns the current player view direction as a unit vector.
@@ -73,9 +72,29 @@ using namespace ModAPI;
 	DirectionVectorInCentimeters GetPlayerViewDirection();
 
 /*
+*	Returns the current location of the hand of the player
+*/
+	CoordinateInCentimeters GetHandLocation(bool LeftHand);
+
+/*
+*	Returns the current location of the tip of the index finger of the player
+*/
+	CoordinateInCentimeters GetIndexFingerTipLocation(bool LeftHand);
+
+/*
 *	Get the name of the currently loaded world.
 */
 	wString GetWorldName();
+
+/*
+*	Get the current time of day. Returns a float between 0 and 2400. 0 and 2400 are the identical time, midnight. 1200 is mid-day.
+*/
+	float GetTimeOfDay();
+
+/*
+*	A simple function to return if it's currently night in the world.
+*/
+	bool IsCurrentlyNight();
 
 /*
 *	Returns a random bool with a certain chance to be TRUE. This function is very fast (~5 CPU cycles).
@@ -97,3 +116,6 @@ using namespace ModAPI;
 
 	// Returns an array of all coordinates in a certain radius around a specific coordinate
 	std::vector<CoordinateInBlocks> GetAllCoordinatesInRadius(CoordinateInBlocks At, int32_t Radius);
+
+	// Returns the path where this mod is installed
+	const wString& GetThisModFolderPath();
