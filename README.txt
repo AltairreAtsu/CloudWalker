@@ -1,5 +1,5 @@
 Cloud Walker by Quill Inkwell
-Version 0.1
+Version 0.2.2
 
 Installation Instructions:
 ===============================================
@@ -13,7 +13,7 @@ Usage Instructions:
 To use you need to craft the Cloud Walker Toggle block from the "Cloud Walker" crafting 
 category. Now place the block anywhere in the world. Next take out your bow and shoot
 the block with an arrow. This will place the height calibrator block into the world.
-Stand up straight up straight level with the calibrator then tap it with a stick. This
+Stand up straight up then tap it with a stick. This
 will save your height into the mod. (THIS STEP IS ABSOLUTELY REQUIRED FOR USE.) You can
 now close the menu by hitting the toggle block with an arrow again. 
 

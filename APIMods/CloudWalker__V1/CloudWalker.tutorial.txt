@@ -2,9 +2,9 @@ Thank you for downloading and trying out my mod!
 To use you need to craft the Cloud Walker Toggle block from the "Cloud Walker" crafting 
 category. Now place the block anywhere in the world. Next take out your bow and shoot
 the block with an arrow. This will place the height calibrator block into the world.
-Stand up straight up straight level with the calibrator then tap it with a stick. This
-will save your height into the mod. (THIS STEP IS ABSOLUTELY REQUIRED FOR USE.) You can
-now close the menu by hitting the toggle block with an arrow again. 
+Stand up straight up straight then tap it with a stick. This will save your height 
+into the mod. (THIS STEP IS ABSOLUTELY REQUIRED FOR USE.) You can now close the menu by
+hitting the toggle block with an arrow again. 
 
 To begin flying just tap the toggle block with your stick. This will enable flight
 mode. Now if you walk off any two block any ledge you should see a cloud forming at you

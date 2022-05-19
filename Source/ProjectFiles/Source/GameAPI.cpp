@@ -51,6 +51,11 @@ bool SetPlayerLocation(CoordinateInCentimeters To)
 	return InternalFunctions::I_SetPlayerLocation(To);
 }
 
+CoordinateInCentimeters GetPlayerLocationHead()
+{
+	return InternalFunctions::I_GetPlayerLocationHead();
+}
+
 DirectionVectorInCentimeters GetPlayerViewDirection()
 {
 	DirectionVectorInCentimetersC Type = InternalFunctions::I_GetPlayerViewDirection();
@@ -67,6 +72,21 @@ CoordinateInCentimeters GetIndexFingerTipLocation(bool LeftHand)
 	return InternalFunctions::I_GetIndexFingerTipLocation(LeftHand);
 }
 
+void SpawnBlockItem(CoordinateInCentimeters At, BlockInfo Type)
+{
+	return InternalFunctions::I_SpawnBlockItem(At, Type);
+}
+
+void AddToInventory(BlockInfo Type, int Amount)
+{
+	return InternalFunctions::I_AddToInventory(Type, Amount);
+}
+
+void RemoveFromInventory(BlockInfo Type, int Amount)
+{
+	return InternalFunctions::I_RemoveFromInventory(Type, Amount);
+}
+
 wString GetWorldName()
 {
 	return wString(InternalFunctions::I_GetWorldName());
@@ -77,10 +97,25 @@ float GetTimeOfDay()
 	return InternalFunctions::I_GetTimeOfDay();
 }
 
+void SetTimeOfDay(float NewTime)
+{
+	return InternalFunctions::I_SetTimeOfDay(NewTime);
+}
+
 bool IsCurrentlyNight()
 {
 	float Time = GetTimeOfDay();
 	return (Time < 600 || Time > 1800);
+}
+
+void PlayHapticFeedbackOnHand(bool LeftHand, float DurationSeconds, float Frequency, float Amplitude)
+{
+	return InternalFunctions::I_PlayHapticFeedbackOnHand(LeftHand, DurationSeconds, Frequency, Amplitude);
+}
+
+void SpawnBPModActor(CoordinateInCentimeters At, const wString& ModName, const wString& ActorName)
+{
+	return InternalFunctions::I_SpawnBPModActor(At, ModName.c_str(), ActorName.c_str());
 }
 
 
