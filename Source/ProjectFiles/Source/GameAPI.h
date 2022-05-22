@@ -133,6 +133,17 @@ using namespace ModAPI;
 */
 	void SpawnBPModActor(CoordinateInCentimeters At, const wString& ModName, const wString& ActorName);
 
+/*
+*	Save a persistent string to the save files of the currently active world, that you can later load using LoadModDataString.
+*/
+	void SaveModDataString(wString ModName, wString StringIn);
+
+/*
+*	Load a string you previously saved using SaveModDataString.
+*/
+	bool LoadModDataString(wString ModName, wString& StringOut);
+
+
 
 /*
 *	Returns a random bool with a certain chance to be TRUE. This function is very fast (~5 CPU cycles).
@@ -157,3 +168,9 @@ using namespace ModAPI;
 
 	// Returns the path where this mod is installed
 	const wString& GetThisModFolderPath();
+
+/*
+*	Get a handle to memory you want to share between multiple different mods. 
+*	The handle automatically aquires a lock on the memory for thread safety, and releases it when going out of scope.
+*/
+	ScopedSharedMemoryHandle GetSharedMemoryPointer(wString Key, bool CreateIfNotExist, bool WaitUntilExist);

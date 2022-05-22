@@ -17,14 +17,14 @@ const int World_Max_Height = 720;
 const int World_Min_Height = 0;
 const int Save_Tick_Interval = 10;
 const int Decent_Tick_Interval = 5;
-const int Accent_Tick_Interval = 8;
+const int Accent_Tick_Interval = 5;
 const int Hand_Trigger_Distance_Threshold = 15;
 const double Rise_Height_Trigger_Threshold = .30;
 const int Player_Sunk_Off_Platform_Threshold = -50;
 
 bool cloudWalkingEnabled = false;
 int playerHeight = 175;
-int platformRadius = 4;
+int platformRadius = 3;
 int progressToBlock = 0;
 int progressToSave = 0;
 int16_t platformHeight = 0;
@@ -460,7 +460,7 @@ void Event_Tick()
 			if (IsHandAboveRiseThreshold()) 
 			{
 				progressToBlock++;
-				if (progressToBlock >= Decent_Tick_Interval) 
+				if (progressToBlock >= Accent_Tick_Interval) 
 				{
 					progressToBlock = 0;
 					platformHeight++;
@@ -468,7 +468,7 @@ void Event_Tick()
 			}
 			else {
 				progressToBlock++;
-				if (progressToBlock >= Accent_Tick_Interval) 
+				if (progressToBlock >= Decent_Tick_Interval)
 				{
 					progressToBlock = 0;
 					platformHeight--;

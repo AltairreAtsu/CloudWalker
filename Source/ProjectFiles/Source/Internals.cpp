@@ -50,6 +50,14 @@ void Internals::Init()
 	InternalFunctions::I_SpawnBPModActor = (SpawnBPModActor_T) GetProcAddress(app, "SpawnBPModActor");
 
 
+	InternalFunctions::I_SaveModDataString = (SaveModDataString_T) GetProcAddress(app, "SaveModDataString");
+	InternalFunctions::I_LoadModDataString = (LoadModDataString_T) GetProcAddress(app, "LoadModDataString");
+
+
+	InternalFunctions::I_GetSharedMemoryPointer = (GetSharedMemoryPointer_T) GetProcAddress(app, "GetSharedMemoryPointer");
+	InternalFunctions::I_ReleaseSharedMemoryPointer = (ReleaseSharedMemoryPointer_T) GetProcAddress(app, "ReleaseSharedMemoryPointer");
+
+
 	std::string ErrorString = GetLastErrorAsString();
 
 	if (!InternalFunctions::I_Log) __debugbreak();
