@@ -4,6 +4,13 @@
 
 #include "GameAPI.cpp"
 
+#define RegisterFunction(FunctionName)  InternalFunctions::I_##FunctionName = (##FunctionName##_T) GetProcAddress(app, #FunctionName);		\
+										if (!InternalFunctions::I_##FunctionName) {															\
+											std::string ErrorString = GetLastErrorAsString();												\
+											__debugbreak();																					\
+										};
+
+
 void Internals::Init()
 {
 	std::cout << "Loaded!" << std::endl;
@@ -11,52 +18,53 @@ void Internals::Init()
 	app = GetModuleHandle(nullptr);
 
 	if (!app) {
+		std::string ErrorString = GetLastErrorAsString();
 		__debugbreak();
 	}
 
-	InternalFunctions::I_Log = (Log_T) GetProcAddress(app, "Log");
+	RegisterFunction(Log);
 
-	InternalFunctions::I_GetBlock = (GetBlock_T) GetProcAddress(app, "GetBlock");
+	RegisterFunction(GetBlock);
+	RegisterFunction(SetBlock);
 
-	InternalFunctions::I_SetBlock = (SetBlock_T) GetProcAddress(app, "SetBlock");
+	RegisterFunction(SpawnHintText);
 
-	InternalFunctions::I_SpawnHintText = (SpawnHintText_T) GetProcAddress(app, "SpawnHintText");
+	RegisterFunction(GetPlayerLocation);
+	RegisterFunction(SetPlayerLocation);
+	RegisterFunction(GetPlayerLocationHead);
+	RegisterFunction(GetPlayerViewDirection);
 
-	InternalFunctions::I_GetPlayerLocation = (GetPlayerLocation_T) GetProcAddress(app, "GetPlayerLocation");
+	RegisterFunction(GetHandLocation);
+	RegisterFunction(GetIndexFingerTipLocation);
 
-	InternalFunctions::I_SetPlayerLocation = (SetPlayerLocation_T) GetProcAddress(app, "SetPlayerLocation");
+	RegisterFunction(SpawnBlockItem);
 
-	InternalFunctions::I_GetPlayerLocationHead = (GetPlayerLocationHead_T)GetProcAddress(app, "GetPlayerLocationHead");
+	RegisterFunction(AddToInventory);
+	RegisterFunction(RemoveFromInventory);
 
-	InternalFunctions::I_GetPlayerViewDirection = (GetPlayerViewDirection_T) GetProcAddress(app, "GetPlayerViewDirection");
+	RegisterFunction(GetWorldName);
 
-	InternalFunctions::I_GetHandLocation = (GetHandLocation_T) GetProcAddress(app, "GetHandLocation");
-	InternalFunctions::I_GetIndexFingerTipLocation = (GetIndexFingerTipLocation_T) GetProcAddress(app, "GetIndexFingerTipLocation");
+	RegisterFunction(GetTimeOfDay);
+	RegisterFunction(SetTimeOfDay);
 
-	InternalFunctions::I_SpawnBlockItem = (SpawnBlockItem_T) GetProcAddress(app, "SpawnBlockItem");
+	RegisterFunction(PlayHapticFeedbackOnHand);
 
-	InternalFunctions::I_AddToInventory = (AddToInventory_T) GetProcAddress(app, "AddToInventory");
-	InternalFunctions::I_RemoveFromInventory = (RemoveFromInventory_T) GetProcAddress(app, "RemoveFromInventory");
+	RegisterFunction(GetPlayerHealth);
+	RegisterFunction(SetPlayerHealth);
 
-	InternalFunctions::I_GetWorldName = (GetWorldName_T) GetProcAddress(app, "GetWorldName");
+	RegisterFunction(SpawnBPModActor);
 
-	InternalFunctions::I_GetTimeOfDay = (GetTimeOfDay_T) GetProcAddress(app, "GetTimeOfDay");
+	RegisterFunction(SaveModDataString);
+	RegisterFunction(LoadModDataString);
+	RegisterFunction(SaveModData);
+	RegisterFunction(LoadModData);
 
-	InternalFunctions::I_SetTimeOfDay = (SetTimeOfDay_T) GetProcAddress(app, "SetTimeOfDay");
+	RegisterFunction(GetThisModSaveFolderPath);
 
+	RegisterFunction(GetGameVersionNumber);
 
-	InternalFunctions::I_PlayHapticFeedbackOnHand = (PlayHapticFeedbackOnHand_T) GetProcAddress(app, "PlayHapticFeedbackOnHand");
-
-	InternalFunctions::I_SpawnBPModActor = (SpawnBPModActor_T) GetProcAddress(app, "SpawnBPModActor");
-
-
-	InternalFunctions::I_SaveModDataString = (SaveModDataString_T) GetProcAddress(app, "SaveModDataString");
-	InternalFunctions::I_LoadModDataString = (LoadModDataString_T) GetProcAddress(app, "LoadModDataString");
-
-
-	InternalFunctions::I_GetSharedMemoryPointer = (GetSharedMemoryPointer_T) GetProcAddress(app, "GetSharedMemoryPointer");
-	InternalFunctions::I_ReleaseSharedMemoryPointer = (ReleaseSharedMemoryPointer_T) GetProcAddress(app, "ReleaseSharedMemoryPointer");
-
+	RegisterFunction(GetSharedMemoryPointer);
+	RegisterFunction(ReleaseSharedMemoryPointer);
 
 	std::string ErrorString = GetLastErrorAsString();
 
@@ -68,6 +76,11 @@ void Internals::Init()
 const char* Internals::GetName()
 {
 	return "DefaultName";
+}
+
+const uint32_t Internals::GetAPIVersionNumber()
+{
+	return 1;
 }
 
 const uint32_t Internals::GetModUniqueIDsNum()
@@ -95,9 +108,9 @@ const void Internals::E_Event_BlockDestroyed(const CoordinateInBlocks& At, const
 	Event_BlockDestroyed(At, CustomBlockID, Moved);
 }
 
-const void Internals::E_Event_BlockHitByTool(const CoordinateInBlocks& At, const UniqueID& CustomBlockID, const wchar_t* ToolName)
+const void Internals::E_Event_BlockHitByTool(const CoordinateInBlocks& At, const UniqueID& CustomBlockID, const wchar_t* ToolName, const CoordinateInCentimeters& ExactHitLocation, bool ToolHeldByHandLeft)
 {	
-	Event_BlockHitByTool(At, CustomBlockID, ToolName);
+	Event_BlockHitByTool(At, CustomBlockID, ToolName, ExactHitLocation, ToolHeldByHandLeft);
 }
 
 const void Internals::E_Event_Tick()
@@ -115,17 +128,17 @@ const void Internals::E_Event_OnExit()
 	Event_OnExit();
 }
 
-const void Internals::E_Event_AnyBlockPlaced(const CoordinateInBlocks& At, const BlockInfoC& Type, const bool& Moved)
+const void Internals::E_Event_AnyBlockPlaced(const CoordinateInBlocks& At, const BlockInfo& Type, const bool& Moved)
 {
-	Event_AnyBlockPlaced(At, *((BlockInfo*)&Type), Moved);
+	Event_AnyBlockPlaced(At, Type, Moved);
 }
 
-const void Internals::E_Event_AnyBlockDestroyed(const CoordinateInBlocks& At, const BlockInfoC& Type, const bool& Moved)
+const void Internals::E_Event_AnyBlockDestroyed(const CoordinateInBlocks& At, const BlockInfo& Type, const bool& Moved)
 {
-	Event_AnyBlockDestroyed(At, *((BlockInfo*)&Type), Moved);
+	Event_AnyBlockDestroyed(At, Type, Moved);
 }
 
-const void Internals::E_Event_AnyBlockHitByTool(const CoordinateInBlocks& At, const BlockInfoC& Type, const wchar_t* ToolName)
+const void Internals::E_Event_AnyBlockHitByTool(const CoordinateInBlocks& At, const BlockInfo& Type, const wchar_t* ToolName, const CoordinateInCentimeters& ExactHitLocation, bool ToolHeldByHandLeft)
 {
-	Event_AnyBlockHitByTool(At, *((BlockInfo*)&Type), ToolName);
+	Event_AnyBlockHitByTool(At, Type, ToolName, ExactHitLocation, ToolHeldByHandLeft);
 }

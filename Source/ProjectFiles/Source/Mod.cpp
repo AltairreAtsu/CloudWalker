@@ -273,8 +273,7 @@ void RemovePlatform()
 
 void SetCloudBlock(CoordinateInBlocks location) 
 {
-	BlockInfo currentBlock = GetBlock(location);
-	SetBlock(location, Cloud_Block);
+	BlockInfo currentBlock = GetAndSetBlock(location, Cloud_Block);
 	platformCoords.push_back( Cloud(location, currentBlock));
 }
 
@@ -388,7 +387,7 @@ void TeleportToNearestSolidBlockBelow() {
 *************************************************************/
 
 
-void Event_BlockHitByTool(CoordinateInBlocks At, UniqueID CustomBlockID, wString ToolName)
+void Event_BlockHitByTool(CoordinateInBlocks At, UniqueID CustomBlockID, wString ToolName, CoordinateInCentimeters ExactHitLocation, bool ToolHeldByHandLeft)
 {
 	if (CustomBlockID == Cloud_Block) 
 	{
@@ -532,5 +531,5 @@ void Event_AnyBlockPlaced(CoordinateInBlocks At, BlockInfo Type, bool Moved)
 {}
 void Event_AnyBlockDestroyed(CoordinateInBlocks At, BlockInfo Type, bool Moved)
 {}
-void Event_AnyBlockHitByTool(CoordinateInBlocks At, BlockInfo Type, wString ToolName)
+void Event_AnyBlockHitByTool(CoordinateInBlocks At, BlockInfo Type, wString ToolName, CoordinateInCentimeters ExactHitLocation, bool ToolHeldByHandLeft)
 {}
